@@ -590,15 +590,32 @@
     margin-top: 8px;
   }
   .game-log { margin-top: 12px; }
-  .log-batter {
+  .log-batter-group {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .log-batter-header {
     background: #CC0000;
     color: white;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 4px;
-    min-width: 38px;
-    text-align: center;
+    padding: 8px 14px;
+  }
+  .log-batter-group .history-entry {
+    border-bottom: 1px solid #2a2a2a;
+    padding: 6px 14px;
+  }
+  .log-batter-group .history-entry:last-child {
+    border-bottom: none;
+  }
+  .log-ab-num {
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 28px;
   }
 
   /* Scout button on start screen */
@@ -1526,15 +1543,29 @@ function render() {
 
     if (state.showGameLog) {
       html += '<div class="game-log">';
-      var reversed = state.atBats.slice().reverse();
-      reversed.forEach(function(ab) {
-        html += '<div class="history-entry">';
-        html += '<span class="log-batter">#' + esc(ab.batterNum) + '</span>';
-        html += '<span class="history-result ' + resultClass(ab) + '">' + formatResult(ab) + '</span>';
-        if (ab.hardHit) html += '<span class="hard-hit-badge">Hard</span>';
-        html += '<span class="history-pitcher">vs ' + esc(ab.pitcher) + '</span>';
-        html += '<button class="history-edit" onclick="editAtBat(\'' + ab.id + '\')">Edit</button>';
-        html += '<button class="history-delete" onclick="deleteAtBat(\'' + ab.id + '\')">×</button>';
+      // Group by batter in lineup order (order of first appearance)
+      var lineupOrder = [];
+      var batterABs = {};
+      state.atBats.forEach(function(ab) {
+        if (!batterABs[ab.batterNum]) {
+          lineupOrder.push(ab.batterNum);
+          batterABs[ab.batterNum] = [];
+        }
+        batterABs[ab.batterNum].push(ab);
+      });
+      lineupOrder.forEach(function(num, idx) {
+        html += '<div class="log-batter-group">';
+        html += '<div class="log-batter-header">#' + esc(num) + '</div>';
+        batterABs[num].forEach(function(ab, abIdx) {
+          html += '<div class="history-entry">';
+          html += '<span class="log-ab-num">AB' + (abIdx+1) + '</span>';
+          html += '<span class="history-result ' + resultClass(ab) + '">' + formatResult(ab) + '</span>';
+          if (ab.hardHit) html += '<span class="hard-hit-badge">Hard</span>';
+          html += '<span class="history-pitcher">vs ' + esc(ab.pitcher) + '</span>';
+          html += '<button class="history-edit" onclick="editAtBat(\'' + ab.id + '\')">Edit</button>';
+          html += '<button class="history-delete" onclick="deleteAtBat(\'' + ab.id + '\')">×</button>';
+          html += '</div>';
+        });
         html += '</div>';
       });
       html += '</div>';

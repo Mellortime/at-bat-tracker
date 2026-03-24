@@ -122,6 +122,34 @@
   }
   .setup-field input:focus { border-color: #CC0000; outline: none; }
   .setup-field input::placeholder { color: #666; }
+  .setup-field { position: relative; }
+  .opp-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #333;
+    border: 1px solid #555;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    z-index: 20;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .opp-suggestion {
+    padding: 12px 14px;
+    font-size: 16px;
+    color: #e0e0e0;
+    cursor: pointer;
+    border-bottom: 1px solid #444;
+  }
+  .opp-suggestion:last-child { border-bottom: none; }
+  .opp-suggestion:active { background: #444; }
+  .opp-suggestion .suggestion-detail {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+  }
   .start-game-btn {
     background: linear-gradient(135deg, #8B0000, #CC0000);
     color: #FFD700;
@@ -560,6 +588,120 @@
     text-align: center;
   }
 
+  /* Scout button on start screen */
+  .scout-btn {
+    background: #333;
+    color: #FFD700;
+    border: 2px solid #FFD700;
+    padding: 12px 40px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .scout-btn:active { opacity: 0.7; }
+
+  /* Scout report screen */
+  .scout-screen {
+    padding: 16px;
+  }
+  .scout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .scout-header h2 {
+    font-size: 18px;
+    font-weight: 800;
+    color: #FFD700;
+    text-transform: uppercase;
+  }
+  .scout-back-btn {
+    background: #333;
+    color: #e0e0e0;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .scout-team-btn {
+    background: #222;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .scout-team-btn:active { background: #333; }
+  .scout-team-btn .team-games {
+    color: #888;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .scout-batter-card {
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .scout-batter-header {
+    font-size: 16px;
+    font-weight: 800;
+    color: #FFD700;
+    margin-bottom: 8px;
+  }
+  .scout-game-label {
+    font-size: 11px;
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-top: 6px;
+    margin-bottom: 4px;
+  }
+  .scout-no-data {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 15px;
+  }
+  .scout-prior-alert {
+    background: #3a2a00;
+    border: 1px solid #FFD700;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #FFD700;
+    text-align: center;
+  }
+  .scout-clear-btn {
+    background: #c62828;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+    width: 100%;
+  }
+
   /* Save/export buttons */
   .end-game-btn {
     background: linear-gradient(135deg, #1b5e20, #2e7d32);
@@ -617,9 +759,140 @@ let state = {
   showGameLog: false,
   toast: null,
   saved: false,
+  scoutMode: false,       // showing scout report
+  scoutTeam: null,        // which team's report to show
 };
 
 let toastTimer = null;
+
+// === LOCAL STORAGE: Game History ===
+function loadGameHistory() {
+  try {
+    var data = localStorage.getItem('pcminers_game_history');
+    return data ? JSON.parse(data) : [];
+  } catch(e) { return []; }
+}
+
+function saveGameToHistory() {
+  if (state.atBats.length === 0) return;
+  var history = loadGameHistory();
+  history.push({
+    opponent: state.opponent,
+    date: state.gameDate,
+    time: state.gameTime,
+    atBats: state.atBats.slice(),
+  });
+  try {
+    localStorage.setItem('pcminers_game_history', JSON.stringify(history));
+  } catch(e) {}
+}
+
+function getTeamsFromHistory() {
+  var history = loadGameHistory();
+  var teams = {};
+  history.forEach(function(game) {
+    var key = game.opponent.toLowerCase().trim();
+    if (!teams[key]) {
+      teams[key] = { name: game.opponent, games: [] };
+    }
+    teams[key].games.push(game);
+  });
+  return teams;
+}
+
+function getScoutReport(teamName) {
+  var history = loadGameHistory();
+  var games = history.filter(function(g) {
+    return g.opponent.toLowerCase().trim() === teamName.toLowerCase().trim();
+  });
+  // Group all at-bats by batter number across all games
+  var batters = {};
+  games.forEach(function(game) {
+    game.atBats.forEach(function(ab) {
+      if (!batters[ab.batterNum]) {
+        batters[ab.batterNum] = [];
+      }
+      batters[ab.batterNum].push({
+        date: game.date,
+        result: ab.result,
+        contactType: ab.contactType,
+        location: ab.location,
+        isHit: ab.isHit,
+        hardHit: ab.hardHit,
+        pitcher: ab.pitcher,
+      });
+    });
+  });
+  return { games: games, batters: batters };
+}
+
+function clearHistoryForTeam(teamName) {
+  var history = loadGameHistory();
+  history = history.filter(function(g) {
+    return g.opponent.toLowerCase().trim() !== teamName.toLowerCase().trim();
+  });
+  try {
+    localStorage.setItem('pcminers_game_history', JSON.stringify(history));
+  } catch(e) {}
+}
+
+function hasHistoryForOpponent(name) {
+  if (!name) return false;
+  var teams = getTeamsFromHistory();
+  return !!teams[name.toLowerCase().trim()];
+}
+
+function checkPriorOpponent(name) {
+  var alertEl = document.getElementById('prior-alert');
+  var suggestEl = document.getElementById('opp-suggestions');
+  if (!alertEl) return;
+  if (!name || !name.trim()) {
+    alertEl.innerHTML = '';
+    if (suggestEl) suggestEl.innerHTML = '';
+    return;
+  }
+
+  // Autocomplete suggestions
+  if (suggestEl) {
+    var teams = getTeamsFromHistory();
+    var query = name.trim().toLowerCase();
+    var matches = Object.keys(teams).filter(function(key) {
+      return key.indexOf(query) !== -1;
+    });
+    if (matches.length > 0 && !teams[query]) {
+      var sugHtml = '';
+      matches.forEach(function(key) {
+        var team = teams[key];
+        var totalABs = 0;
+        team.games.forEach(function(g) { totalABs += g.atBats.length; });
+        sugHtml += '<div class="opp-suggestion" onclick="selectOpponent(\'' + esc(team.name) + '\')">';
+        sugHtml += '<div>' + esc(team.name) + '</div>';
+        sugHtml += '<div class="suggestion-detail">' + team.games.length + ' game' + (team.games.length!==1?'s':'') + ' · ' + totalABs + ' ABs scouted</div>';
+        sugHtml += '</div>';
+      });
+      suggestEl.innerHTML = sugHtml;
+    } else {
+      suggestEl.innerHTML = '';
+    }
+  }
+
+  // Prior data alert
+  if (hasHistoryForOpponent(name.trim())) {
+    var report = getScoutReport(name.trim());
+    var batterCount = Object.keys(report.batters).length;
+    alertEl.innerHTML = '<div class="scout-prior-alert">You have prior data on ' + esc(name.trim()) + '! ' + batterCount + ' batter' + (batterCount!==1?'s':'') + ' scouted across ' + report.games.length + ' game' + (report.games.length!==1?'s':'') + '.</div>';
+  } else {
+    alertEl.innerHTML = '';
+  }
+}
+
+function selectOpponent(name) {
+  var input = document.getElementById('opp-input');
+  if (input) input.value = name;
+  var suggestEl = document.getElementById('opp-suggestions');
+  if (suggestEl) suggestEl.innerHTML = '';
+  checkPriorOpponent(name);
+}
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
@@ -867,10 +1140,16 @@ function saveGameToCSV() {
   URL.revokeObjectURL(url);
   state.saved = true;
   state.showEndGameDialog = false;
+  // Also save to local history for scouting
+  saveGameToHistory();
   showToast('Game saved to ' + filename);
 }
 
 function newGame() {
+  // Save to history before clearing (even if CSV wasn't exported)
+  if (state.atBats.length > 0) {
+    saveGameToHistory();
+  }
   if (state.atBats.length > 0 && !state.saved) {
     state.showNewGameDialog = false;
     state.showEndGameDialog = true;
@@ -909,6 +1188,83 @@ function render() {
   const app = document.getElementById('app');
   let html = '';
 
+  // ===== SCOUT REPORT SCREEN =====
+  if (state.scoutMode) {
+    html += '<div class="scout-screen">';
+    html += '<div class="scout-header">';
+    html += '<h2>Scout Report</h2>';
+    html += '<button class="scout-back-btn" onclick="state.scoutMode=false;state.scoutTeam=null;render()">Back</button>';
+    html += '</div>';
+
+    if (state.scoutTeam) {
+      // Show scouting data for a specific team
+      var report = getScoutReport(state.scoutTeam);
+      html += '<div style="margin-bottom:12px">';
+      html += '<span style="font-size:16px;font-weight:700;color:#fff">vs ' + esc(state.scoutTeam) + '</span>';
+      html += '<span style="color:#888;font-size:13px;margin-left:8px">(' + report.games.length + ' game' + (report.games.length!==1?'s':'') + ')</span>';
+      html += '</div>';
+
+      var batterNums = Object.keys(report.batters).sort(function(a,b) { return parseInt(a)-parseInt(b); });
+      if (batterNums.length === 0) {
+        html += '<div class="scout-no-data">No at-bat data found.</div>';
+      } else {
+        batterNums.forEach(function(num) {
+          var abs = report.batters[num];
+          html += '<div class="scout-batter-card">';
+          html += '<div class="scout-batter-header">#' + esc(num) + ' (' + abs.length + ' AB' + (abs.length!==1?'s':'') + ')</div>';
+          abs.forEach(function(ab, idx) {
+            var resText = '';
+            if (ab.result === 'K') resText = 'Strikeout';
+            else if (ab.result === 'BB') resText = 'Walk';
+            else if (ab.result === 'HBP') resText = 'Hit by Pitch';
+            else if (ab.result === 'SAC') resText = 'Sacrifice';
+            else if (ab.result === 'E') resText = 'Reached on Error';
+            else resText = ab.contactType + ' to ' + ab.location + ' (' + (ab.isHit?'HIT':'OUT') + ')';
+            var hhTag = ab.hardHit ? ' <span class="hard-hit-badge">Hard</span>' : '';
+            var cls = '';
+            if (ab.result === 'K') cls = 'result-k';
+            else if (ab.result === 'BB') cls = 'result-bb';
+            else if (ab.result === 'HBP') cls = 'result-hbp';
+            else if (ab.result === 'SAC') cls = 'result-sac';
+            else if (ab.result === 'E') cls = 'result-error';
+            else cls = ab.isHit ? 'result-hit' : 'result-out';
+            html += '<div class="history-entry" style="padding:4px 0">';
+            html += '<span style="color:#666;font-size:11px;min-width:55px">' + esc(ab.date) + '</span>';
+            html += '<span class="history-result ' + cls + '" style="font-size:13px">' + resText + '</span>';
+            html += hhTag;
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+      }
+
+      html += '<button class="scout-back-btn" style="width:100%;margin-top:12px;padding:12px" onclick="state.scoutTeam=null;render()">← All Teams</button>';
+      html += '<button class="scout-clear-btn" onclick="if(confirm(\'Delete all history for ' + esc(state.scoutTeam) + '?\')){clearHistoryForTeam(\'' + esc(state.scoutTeam) + '\');state.scoutTeam=null;render();showToast(\'History cleared\');}">Clear History for ' + esc(state.scoutTeam) + '</button>';
+
+    } else {
+      // Show list of teams
+      var teams = getTeamsFromHistory();
+      var teamKeys = Object.keys(teams).sort();
+      if (teamKeys.length === 0) {
+        html += '<div class="scout-no-data">No game history yet. Play some games and the data will be saved here automatically.</div>';
+      } else {
+        teamKeys.forEach(function(key) {
+          var team = teams[key];
+          var totalABs = 0;
+          team.games.forEach(function(g) { totalABs += g.atBats.length; });
+          html += '<button class="scout-team-btn" onclick="state.scoutTeam=\'' + esc(team.name) + '\';render()">';
+          html += '<span>' + esc(team.name) + '</span>';
+          html += '<span class="team-games">' + team.games.length + ' game' + (team.games.length!==1?'s':'') + ' · ' + totalABs + ' ABs</span>';
+          html += '</button>';
+        });
+      }
+    }
+
+    html += '</div>';
+    app.innerHTML = html;
+    return;
+  }
+
   // ===== GAME SETUP SCREEN =====
   if (!state.gameStarted) {
     html += '<div class="setup-screen">';
@@ -917,9 +1273,15 @@ function render() {
     html += '<div class="setup-subtitle">11U At-Bat Tracker</div>';
     html += '<div class="setup-field">';
     html += '<label>Opponent</label>';
-    html += '<input id="opp-input" type="text" placeholder="e.g. Summit Thunder" autocomplete="off" autocorrect="off" spellcheck="false">';
+    html += '<input id="opp-input" type="text" placeholder="e.g. Summit Thunder" autocomplete="off" autocorrect="off" spellcheck="false" oninput="checkPriorOpponent(this.value)">';
+    html += '<div id="opp-suggestions" class="opp-suggestions"></div>';
     html += '</div>';
+    html += '<div id="prior-alert"></div>';
     html += '<button class="start-game-btn" onclick="startGame()">Start Game</button>';
+    var historyCount = loadGameHistory().length;
+    if (historyCount > 0) {
+      html += '<button class="scout-btn" onclick="state.scoutMode=true;render()">Scout Report</button>';
+    }
     html += '</div>';
     app.innerHTML = html;
     return;
@@ -988,6 +1350,38 @@ function render() {
   }
   html += '</div>';
 
+  // Prior game history for this batter (from scout data)
+  if (state.batterNum && hasHistoryForOpponent(state.opponent)) {
+    var priorReport = getScoutReport(state.opponent);
+    var priorABs = priorReport.batters[state.batterNum];
+    if (priorABs && priorABs.length > 0) {
+      html += '<div class="history-box" style="border-color:#FFD700;border-width:1px">';
+      html += '<div class="history-title" style="color:#FFD700">Prior Games vs ' + esc(state.opponent) + '</div>';
+      priorABs.forEach(function(ab) {
+        var resText = '';
+        if (ab.result === 'K') resText = 'Strikeout';
+        else if (ab.result === 'BB') resText = 'Walk';
+        else if (ab.result === 'HBP') resText = 'Hit by Pitch';
+        else if (ab.result === 'SAC') resText = 'Sacrifice';
+        else if (ab.result === 'E') resText = 'Reached on Error';
+        else resText = ab.contactType + ' to ' + ab.location + ' (' + (ab.isHit?'HIT':'OUT') + ')';
+        var cls = '';
+        if (ab.result === 'K') cls = 'result-k';
+        else if (ab.result === 'BB') cls = 'result-bb';
+        else if (ab.result === 'HBP') cls = 'result-hbp';
+        else if (ab.result === 'SAC') cls = 'result-sac';
+        else if (ab.result === 'E') cls = 'result-error';
+        else cls = ab.isHit ? 'result-hit' : 'result-out';
+        html += '<div class="history-entry" style="padding:4px 0">';
+        html += '<span style="color:#666;font-size:11px;min-width:55px">' + esc(ab.date) + '</span>';
+        html += '<span class="history-result ' + cls + '" style="font-size:13px">' + resText + '</span>';
+        if (ab.hardHit) html += '<span class="hard-hit-badge">Hard</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+  }
+
   // Recording section
   if (state.batterNum) {
     // Editing banner
@@ -1024,7 +1418,7 @@ function render() {
       html += '</div>';
 
       html += '<div class="field-container">';
-      html += '<svg class="field-svg" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">';
+      html += '<svg class="field-svg" viewBox="0 0 400 530" xmlns="http://www.w3.org/2000/svg">';
 
       // === OUTFIELD WEDGES (semicircle, center 200,210, r=180) ===
       // Arc boundary points (36° apart): p0(20,210) p1(54,104) p2(144,39) p3(256,39) p4(346,104) p5(380,210)
@@ -1062,6 +1456,8 @@ function render() {
       // Foul lines
       html += '<line x1="200" y1="490" x2="20" y2="210" stroke="white" stroke-width="1.5" opacity="0.3"/>';
       html += '<line x1="200" y1="490" x2="380" y2="210" stroke="white" stroke-width="1.5" opacity="0.3"/>';
+      // Catcher zone (tappable area around home plate)
+      html += '<circle class="field-zone" cx="200" cy="488" r="28" fill="#704010" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'C\')"/>';
       // Home plate
       html += '<polygon points="200,488 196,483 196,478 204,478 204,483" fill="white"/>';
       // Infield labels
@@ -1070,6 +1466,8 @@ function render() {
       html += '<text class="field-zone-label" x="200" y="268" fill="white" font-size="20" text-anchor="middle">P</text>';
       html += '<text class="field-zone-label" x="300" y="268" fill="white" font-size="20" text-anchor="middle">2B</text>';
       html += '<text class="field-zone-label" x="280" y="385" fill="white" font-size="20" text-anchor="middle">1B</text>';
+      // Catcher label
+      html += '<text class="field-zone-label" x="200" y="500" fill="white" font-size="18" text-anchor="middle">C</text>';
 
       html += '</svg>';
       html += '</div>';

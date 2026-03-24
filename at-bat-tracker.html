@@ -1278,10 +1278,7 @@ function render() {
     html += '</div>';
     html += '<div id="prior-alert"></div>';
     html += '<button class="start-game-btn" onclick="startGame()">Start Game</button>';
-    var historyCount = loadGameHistory().length;
-    if (historyCount > 0) {
-      html += '<button class="scout-btn" onclick="state.scoutMode=true;render()">Scout Report</button>';
-    }
+    html += '<button class="scout-btn" onclick="state.scoutMode=true;render()">Scout Report</button>';
     html += '</div>';
     app.innerHTML = html;
     return;

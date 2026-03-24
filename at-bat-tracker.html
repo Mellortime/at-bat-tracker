@@ -925,66 +925,52 @@ function render() {
       html += '</div>';
 
       html += '<div class="field-container">';
-      html += '<svg class="field-svg" viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg">';
+      html += '<svg class="field-svg" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">';
 
-      // === OUTFIELD (top half) ===
-      html += '<path d="M200,240 L15,90 A210,210 0 0,1 385,90 Z" fill="#2d5a1e" stroke="#1a3a10" stroke-width="1"/>';
-
+      // === OUTFIELD WEDGES (semicircle, center 200,210, r=180) ===
+      // Arc boundary points (36° apart): p0(20,210) p1(54,104) p2(144,39) p3(256,39) p4(346,104) p5(380,210)
       // LF
-      html += '<path class="field-zone" d="M200,240 L15,90 A210,210 0 0,1 88,38 L200,170 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'LF\')"/>';
+      html += '<path class="field-zone" d="M200,210 L20,210 A180,180 0 0,0 54,104 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'LF\')"/>';
       // LCF
-      html += '<path class="field-zone" d="M200,240 L88,38 A210,210 0 0,1 158,5 L200,170 Z" fill="#267a18" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'LCF\')"/>';
+      html += '<path class="field-zone" d="M200,210 L54,104 A180,180 0 0,0 144,39 Z" fill="#237012" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'LCF\')"/>';
       // CF
-      html += '<path class="field-zone" d="M200,240 L158,5 A210,210 0 0,1 242,5 L200,170 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'CF\')"/>';
+      html += '<path class="field-zone" d="M200,210 L144,39 A180,180 0 0,0 256,39 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'CF\')"/>';
       // RCF
-      html += '<path class="field-zone" d="M200,240 L242,5 A210,210 0 0,1 312,38 L200,170 Z" fill="#267a18" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'RCF\')"/>';
+      html += '<path class="field-zone" d="M200,210 L256,39 A180,180 0 0,0 346,104 Z" fill="#237012" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'RCF\')"/>';
       // RF
-      html += '<path class="field-zone" d="M200,240 L312,38 A210,210 0 0,1 385,90 L200,170 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'RF\')"/>';
-
-      // Outfield fence
-      html += '<path d="M15,90 A210,210 0 0,1 385,90" fill="none" stroke="#555" stroke-width="3"/>';
-      // Foul lines (outfield)
-      html += '<line x1="200" y1="240" x2="15" y2="90" stroke="white" stroke-width="1" opacity="0.3"/>';
-      html += '<line x1="200" y1="240" x2="385" y2="90" stroke="white" stroke-width="1" opacity="0.3"/>';
-
+      html += '<path class="field-zone" d="M200,210 L346,104 A180,180 0 0,0 380,210 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1.5" onclick="selectLocation(\'RF\')"/>';
+      // Fence
+      html += '<path d="M20,210 A180,180 0 1,0 380,210" fill="none" stroke="#1a3a10" stroke-width="3"/>';
       // Outfield labels
-      html += '<text class="field-zone-label" x="60" y="125" fill="white" font-size="18" text-anchor="middle">LF</text>';
-      html += '<text class="field-zone-label" x="122" y="70" fill="white" font-size="18" text-anchor="middle">LCF</text>';
-      html += '<text class="field-zone-label" x="200" y="50" fill="white" font-size="18" text-anchor="middle">CF</text>';
-      html += '<text class="field-zone-label" x="278" y="70" fill="white" font-size="18" text-anchor="middle">RCF</text>';
-      html += '<text class="field-zone-label" x="340" y="125" fill="white" font-size="18" text-anchor="middle">RF</text>';
+      html += '<text class="field-zone-label" x="65" y="178" fill="white" font-size="18" text-anchor="middle">LF</text>';
+      html += '<text class="field-zone-label" x="115" y="105" fill="white" font-size="18" text-anchor="middle">LCF</text>';
+      html += '<text class="field-zone-label" x="200" y="80" fill="white" font-size="18" text-anchor="middle">CF</text>';
+      html += '<text class="field-zone-label" x="285" y="105" fill="white" font-size="18" text-anchor="middle">RCF</text>';
+      html += '<text class="field-zone-label" x="335" y="178" fill="white" font-size="18" text-anchor="middle">RF</text>';
 
-      // === INFIELD (big bottom half) ===
-      // Dirt background
-      html += '<path d="M200,275 L50,395 L200,515 L350,395 Z" fill="#7a5a12" stroke="#5a4210" stroke-width="1" opacity="0.25"/>';
-
-      // 3B (bottom-left triangle)
-      html += '<path class="field-zone" d="M200,395 L50,395 L125,455 Z" fill="#a07020" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'3B\')"/>';
-      // SS (top-left triangle)
-      html += '<path class="field-zone" d="M200,395 L50,395 L125,335 L200,275 Z" fill="#8a6018" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'SS\')"/>';
-      // P (center diamond)
-      html += '<path class="field-zone" d="M200,275 L125,335 L200,395 L275,335 Z" fill="#a07020" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'P\')"/>';
-      // 2B (top-right triangle)
-      html += '<path class="field-zone" d="M200,395 L350,395 L275,335 L200,275 Z" fill="#8a6018" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'2B\')"/>';
-      // 1B (bottom-right triangle)
-      html += '<path class="field-zone" d="M200,395 L350,395 L275,455 Z" fill="#a07020" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'1B\')"/>';
-
-      // Foul lines (infield)
-      html += '<line x1="200" y1="515" x2="50" y2="395" stroke="white" stroke-width="1" opacity="0.3"/>';
-      html += '<line x1="200" y1="515" x2="350" y2="395" stroke="white" stroke-width="1" opacity="0.3"/>';
-
-      // Base markers
-      html += '<rect x="47" y="392" width="7" height="7" fill="white" transform="rotate(45,50,395)"/>';
-      html += '<rect x="197" y="272" width="7" height="7" fill="white" transform="rotate(45,200,275)"/>';
-      html += '<rect x="347" y="392" width="7" height="7" fill="white" transform="rotate(45,350,395)"/>';
-      html += '<polygon points="200,515 195,509 195,503 205,503 205,509" fill="white"/>';
-
-      // Infield labels (big)
-      html += '<text class="field-zone-label" x="110" y="435" fill="white" font-size="20" text-anchor="middle">3B</text>';
-      html += '<text class="field-zone-label" x="120" y="370" fill="white" font-size="20" text-anchor="middle">SS</text>';
-      html += '<text class="field-zone-label" x="200" y="350" fill="white" font-size="20" text-anchor="middle">P</text>';
-      html += '<text class="field-zone-label" x="280" y="370" fill="white" font-size="20" text-anchor="middle">2B</text>';
-      html += '<text class="field-zone-label" x="290" y="435" fill="white" font-size="20" text-anchor="middle">1B</text>';
+      // === INFIELD (triangle: left(20,210) → right(380,210) → home(200,490)) ===
+      // 5 zones from center (200,330), top edge split at (130,210) and (270,210)
+      // SS
+      html += '<path class="field-zone" d="M200,330 L20,210 L130,210 Z" fill="#8a6018" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'SS\')"/>';
+      // P
+      html += '<path class="field-zone" d="M200,330 L130,210 L270,210 Z" fill="#a07020" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'P\')"/>';
+      // 2B
+      html += '<path class="field-zone" d="M200,330 L270,210 L380,210 Z" fill="#8a6018" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'2B\')"/>';
+      // 1B
+      html += '<path class="field-zone" d="M200,330 L380,210 L200,490 Z" fill="#a07020" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'1B\')"/>';
+      // 3B
+      html += '<path class="field-zone" d="M200,330 L200,490 L20,210 Z" fill="#a07020" stroke="#c89030" stroke-width="1.5" onclick="selectLocation(\'3B\')"/>';
+      // Foul lines
+      html += '<line x1="200" y1="490" x2="20" y2="210" stroke="white" stroke-width="1.5" opacity="0.3"/>';
+      html += '<line x1="200" y1="490" x2="380" y2="210" stroke="white" stroke-width="1.5" opacity="0.3"/>';
+      // Home plate
+      html += '<polygon points="200,488 196,483 196,478 204,478 204,483" fill="white"/>';
+      // Infield labels
+      html += '<text class="field-zone-label" x="120" y="385" fill="white" font-size="20" text-anchor="middle">3B</text>';
+      html += '<text class="field-zone-label" x="100" y="268" fill="white" font-size="20" text-anchor="middle">SS</text>';
+      html += '<text class="field-zone-label" x="200" y="268" fill="white" font-size="20" text-anchor="middle">P</text>';
+      html += '<text class="field-zone-label" x="300" y="268" fill="white" font-size="20" text-anchor="middle">2B</text>';
+      html += '<text class="field-zone-label" x="280" y="385" fill="white" font-size="20" text-anchor="middle">1B</text>';
 
       html += '</svg>';
       html += '</div>';

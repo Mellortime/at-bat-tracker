@@ -1117,45 +1117,57 @@ function cancelEdit() {
   showToast('Edit cancelled');
 }
 
-function saveGameToCSV() {
-  if (state.atBats.length === 0) { showToast('No at-bats to save'); return; }
+function buildCSVRows(games) {
   const header = 'Date,Time,Opponent,Batter#,Pitcher,Result,ContactType,Location,Hit/Out,HardHit';
-  const rows = state.atBats.map(ab => {
-    const res = ab.result === 'contact' ? 'BallInPlay' : ab.result;
-    const ct = ab.contactType || '';
-    const loc = ab.location || '';
-    const ho = ab.result === 'contact' ? (ab.isHit ? 'Hit' : 'Out') : (ab.isHit ? 'Reached' : 'Out');
-    const hh = ab.hardHit ? 'Yes' : 'No';
-    return [state.gameDate, state.gameTime, '"'+state.opponent+'"', ab.batterNum, '"'+ab.pitcher+'"', res, ct, loc, ho, hh].join(',');
+  var rows = [];
+  games.forEach(function(g) {
+    g.atBats.forEach(function(ab) {
+      var res = ab.result === 'contact' ? 'BallInPlay' : ab.result;
+      var ct = ab.contactType || '';
+      var loc = ab.location || '';
+      var ho = ab.result === 'contact' ? (ab.isHit ? 'Hit' : 'Out') : (ab.isHit ? 'Reached' : 'Out');
+      var hh = ab.hardHit ? 'Yes' : 'No';
+      rows.push([g.date||'', g.time||'', '"'+(g.opponent||'')+'"', ab.batterNum, '"'+(ab.pitcher||'')+'"', res, ct, loc, ho, hh].join(','));
+    });
   });
-  const csv = header + '\n' + rows.join('\n') + '\n';
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const filename = 'game_' + state.opponent.replace(/[^a-zA-Z0-9]/g,'_') + '_' + state.gameDate.replace(/\//g,'-') + '.csv';
+  return header + '\n' + rows.join('\n') + '\n';
+}
+
+function downloadCSV(csv, filename) {
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  state.saved = true;
-  state.showEndGameDialog = false;
-  // Also save to local history for scouting
-  saveGameToHistory();
-  showToast('Game saved to ' + filename);
+}
+
+function exportTeamCSV(teamName) {
+  var history = loadGameHistory();
+  var games = history.filter(function(g) { return g.opponent.toLowerCase() === teamName.toLowerCase(); });
+  if (games.length === 0) { showToast('No data to export'); return; }
+  var csv = buildCSVRows(games);
+  var filename = 'scout_' + teamName.replace(/[^a-zA-Z0-9]/g,'_') + '.csv';
+  downloadCSV(csv, filename);
+  showToast('Exported ' + filename);
+}
+
+function exportAllCSV() {
+  var history = loadGameHistory();
+  if (history.length === 0) { showToast('No data to export'); return; }
+  var csv = buildCSVRows(history);
+  var filename = 'all_games_export.csv';
+  downloadCSV(csv, filename);
+  showToast('Exported ' + filename);
 }
 
 function newGame() {
-  // Save to history before clearing (even if CSV wasn't exported)
+  // Save to history before clearing
   if (state.atBats.length > 0) {
     saveGameToHistory();
-  }
-  if (state.atBats.length > 0 && !state.saved) {
-    state.showNewGameDialog = false;
-    state.showEndGameDialog = true;
-    render();
-    return;
   }
   resetGame();
 }
@@ -1239,7 +1251,8 @@ function render() {
         });
       }
 
-      html += '<button class="scout-back-btn" style="width:100%;margin-top:12px;padding:12px" onclick="state.scoutTeam=null;render()">← All Teams</button>';
+      html += '<button class="scout-back-btn" style="width:100%;margin-top:12px;padding:12px;background:#CC0000;color:white;font-weight:700" onclick="exportTeamCSV(\'' + esc(state.scoutTeam) + '\')">Export to CSV</button>';
+      html += '<button class="scout-back-btn" style="width:100%;margin-top:8px;padding:12px" onclick="state.scoutTeam=null;render()">← All Teams</button>';
       html += '<button class="scout-clear-btn" onclick="if(confirm(\'Delete all history for ' + esc(state.scoutTeam) + '?\')){clearHistoryForTeam(\'' + esc(state.scoutTeam) + '\');state.scoutTeam=null;render();showToast(\'History cleared\');}">Clear History for ' + esc(state.scoutTeam) + '</button>';
 
     } else {
@@ -1258,6 +1271,7 @@ function render() {
           html += '<span class="team-games">' + team.games.length + ' game' + (team.games.length!==1?'s':'') + ' · ' + totalABs + ' ABs</span>';
           html += '</button>';
         });
+        html += '<button class="scout-back-btn" style="width:100%;margin-top:16px;padding:12px;background:#CC0000;color:white;font-weight:700" onclick="exportAllCSV()">Export All Games to CSV</button>';
       }
     }
 
@@ -1514,7 +1528,6 @@ function render() {
     }
 
     // Save/end game button
-    html += '<button class="end-game-btn" onclick="saveGameToCSV()">Save Game to CSV</button>';
   }
 
   html += '</div>'; // close .main
@@ -1524,20 +1537,11 @@ function render() {
     html += '<div class="overlay" onclick="state.showNewGameDialog=false;render()">';
     html += '<div class="dialog" onclick="event.stopPropagation()">';
     html += '<h3>End Game?</h3>';
-    if (state.atBats.length > 0 && !state.saved) {
-      html += '<p>You have unsaved at-bat data. Save first or discard?</p>';
-      html += '<div class="dialog-btns" style="flex-wrap:wrap;gap:8px">';
-      html += '<button class="dialog-save" style="flex-basis:100%" onclick="saveGameToCSV()">Save to CSV First</button>';
-      html += '<button class="dialog-cancel" onclick="state.showNewGameDialog=false;render()">Cancel</button>';
-      html += '<button class="dialog-confirm" onclick="resetGame()">Discard & New Game</button>';
-      html += '</div>';
-    } else {
-      html += '<p>Start a new game?</p>';
-      html += '<div class="dialog-btns">';
-      html += '<button class="dialog-cancel" onclick="state.showNewGameDialog=false;render()">Cancel</button>';
-      html += '<button class="dialog-confirm" onclick="resetGame()">New Game</button>';
-      html += '</div>';
-    }
+    html += '<p>Game data is saved automatically and available in the Scout Report.</p>';
+    html += '<div class="dialog-btns">';
+    html += '<button class="dialog-cancel" onclick="state.showNewGameDialog=false;render()">Cancel</button>';
+    html += '<button class="dialog-confirm" onclick="newGame()">End Game</button>';
+    html += '</div>';
     html += '</div></div>';
   }
 

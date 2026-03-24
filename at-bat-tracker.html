@@ -313,6 +313,41 @@
   .result-sac { color: #fff176; }
   .result-error { color: #ffab40; }
 
+  .history-edit {
+    background: none;
+    border: 1px solid #555;
+    color: #999;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .history-edit:active { color: #FFD700; border-color: #FFD700; }
+  .editing-banner {
+    background: #3a2a00;
+    border: 1px solid #FFD700;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #FFD700;
+    font-weight: 600;
+  }
+  .editing-banner .cancel-edit {
+    background: none;
+    border: 1px solid #FFD700;
+    color: #FFD700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
   /* Section titles */
   .section-title {
     font-size: 12px;
@@ -575,6 +610,8 @@ let state = {
   selectedContact: null,
   selectedLocation: null,
   hardHit: false,
+  editingId: null,
+  pendingBatter: '',
   showNewGameDialog: false,
   showEndGameDialog: false,
   showGameLog: false,
@@ -668,8 +705,7 @@ function startGame() {
 function recordNonContact(type) {
   if (!state.batterNum) { showToast('Enter batter # first'); return; }
   if (!state.pitcher) { showToast('Select a pitcher first'); return; }
-  state.atBats.push({
-    id: genId(),
+  var newData = {
     batterNum: state.batterNum,
     pitcher: state.pitcher,
     result: type,
@@ -677,9 +713,16 @@ function recordNonContact(type) {
     location: null,
     isHit: type === 'BB' || type === 'HBP',
     hardHit: false,
-    timestamp: Date.now(),
-  });
-  var msg = '#' + state.batterNum + ': ' + type + ' recorded';
+  };
+  if (state.editingId) {
+    finishEdit(newData);
+    var msg = '#' + state.batterNum + ': updated to ' + type;
+  } else {
+    newData.id = genId();
+    newData.timestamp = Date.now();
+    state.atBats.push(newData);
+    var msg = '#' + state.batterNum + ': ' + type + ' recorded';
+  }
   state.step = 'idle';
   state.selectedContact = null;
   state.selectedLocation = null;
@@ -714,8 +757,7 @@ function toggleHardHit() {
 function recordHitOut(isHit) {
   if (!state.batterNum) { showToast('Enter batter # first'); return; }
   if (!state.pitcher) { showToast('Select a pitcher first'); return; }
-  state.atBats.push({
-    id: genId(),
+  var newData = {
     batterNum: state.batterNum,
     pitcher: state.pitcher,
     result: 'contact',
@@ -723,10 +765,17 @@ function recordHitOut(isHit) {
     location: state.selectedLocation,
     isHit: isHit,
     hardHit: state.hardHit,
-    timestamp: Date.now(),
-  });
-  const hh = state.hardHit ? ' HARD HIT' : '';
-  const msg = '#' + state.batterNum + ': ' + state.selectedContact + ' to ' + state.selectedLocation + ' (' + (isHit?'Hit':'Out') + ')' + hh;
+  };
+  var hh = state.hardHit ? ' HARD HIT' : '';
+  if (state.editingId) {
+    finishEdit(newData);
+    var msg = '#' + state.batterNum + ': updated → ' + state.selectedContact + ' to ' + state.selectedLocation + ' (' + (isHit?'Hit':'Out') + ')' + hh;
+  } else {
+    newData.id = genId();
+    newData.timestamp = Date.now();
+    state.atBats.push(newData);
+    var msg = '#' + state.batterNum + ': ' + state.selectedContact + ' to ' + state.selectedLocation + ' (' + (isHit?'Hit':'Out') + ')' + hh;
+  }
   state.step = 'idle';
   state.selectedContact = null;
   state.selectedLocation = null;
@@ -745,12 +794,53 @@ function clearSelection() {
   state.selectedContact = null;
   state.selectedLocation = null;
   state.hardHit = false;
+  if (state.step === 'idle' && state.editingId) {
+    // Keep editing mode, just go back to outcome selection
+  }
   render();
 }
 
 function deleteAtBat(id) {
   state.atBats = state.atBats.filter(ab => ab.id !== id);
   render();
+}
+
+function editAtBat(id) {
+  // Find the at-bat and load it into editing mode
+  var ab = state.atBats.find(function(a) { return a.id === id; });
+  if (!ab) return;
+  state.editingId = id;
+  state.batterNum = ab.batterNum;
+  state.pitcher = ab.pitcher;
+  state.step = 'idle';
+  state.selectedContact = null;
+  state.selectedLocation = null;
+  state.hardHit = false;
+  // Update pitcher dropdown to match
+  render();
+  showToast('Editing AB for #' + ab.batterNum + ' — re-enter result');
+}
+
+function finishEdit(newData) {
+  state.atBats = state.atBats.map(function(ab) {
+    if (ab.id === state.editingId) {
+      return Object.assign({}, ab, newData);
+    }
+    return ab;
+  });
+  state.editingId = null;
+}
+
+function cancelEdit() {
+  state.editingId = null;
+  state.batterNum = '';
+  state.pendingBatter = '';
+  state.step = 'idle';
+  state.selectedContact = null;
+  state.selectedLocation = null;
+  state.hardHit = false;
+  render();
+  showToast('Edit cancelled');
 }
 
 function saveGameToCSV() {
@@ -891,6 +981,7 @@ function render() {
       html += '<span class="history-result ' + resultClass(ab) + '">' + formatResult(ab) + '</span>';
       if (ab.hardHit) html += '<span class="hard-hit-badge">Hard</span>';
       html += '<span class="history-pitcher">vs ' + esc(ab.pitcher) + '</span>';
+      html += '<button class="history-edit" onclick="editAtBat(\'' + ab.id + '\')">Edit</button>';
       html += '<button class="history-delete" onclick="deleteAtBat(\'' + ab.id + '\')">×</button>';
       html += '</div>';
     });
@@ -899,6 +990,14 @@ function render() {
 
   // Recording section
   if (state.batterNum) {
+    // Editing banner
+    if (state.editingId) {
+      html += '<div class="editing-banner">';
+      html += '<span>Editing AB for #' + esc(state.batterNum) + '</span>';
+      html += '<button class="cancel-edit" onclick="cancelEdit()">Cancel</button>';
+      html += '</div>';
+    }
+
     if (state.step === 'idle') {
       html += '<div class="section-title">Quick Outcomes</div>';
       html += '<div class="btn-grid grid-5">';
@@ -1013,6 +1112,7 @@ function render() {
         html += '<span class="history-result ' + resultClass(ab) + '">' + formatResult(ab) + '</span>';
         if (ab.hardHit) html += '<span class="hard-hit-badge">Hard</span>';
         html += '<span class="history-pitcher">vs ' + esc(ab.pitcher) + '</span>';
+        html += '<button class="history-edit" onclick="editAtBat(\'' + ab.id + '\')">Edit</button>';
         html += '<button class="history-delete" onclick="deleteAtBat(\'' + ab.id + '\')">×</button>';
         html += '</div>';
       });

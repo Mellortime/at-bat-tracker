@@ -362,6 +362,31 @@
   .btn-loc { background: #1b5e20; color: white; }
   .btn-loc-infield { background: #4e342e; color: white; }
 
+  /* ===== FIELD DIAGRAM ===== */
+  .field-container {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 16px;
+    position: relative;
+  }
+  .field-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+  }
+  .field-zone {
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .field-zone:active { opacity: 0.7; }
+  .field-zone-label {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 800;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+
   .btn-hit { background: #2e7d32; color: white; font-size: 15px; padding: 16px; }
   .btn-out { background: #c62828; color: white; font-size: 15px; padding: 16px; }
 
@@ -895,22 +920,66 @@ function render() {
 
     if (state.step === 'selectLocation') {
       html += '<div class="selection-summary">';
-      html += '<span>Type: <strong>' + state.selectedContact + '</strong> → Where?</span>';
+      html += '<span>Type: <strong>' + state.selectedContact + '</strong> → Tap location</span>';
       html += '<button class="clear-btn" onclick="clearSelection()">Back</button>';
       html += '</div>';
 
-      html += '<div class="section-title">Outfield</div>';
-      html += '<div class="btn-grid grid-5">';
-      ['LF','LCF','CF','RCF','RF'].forEach(function(loc) {
-        html += '<button class="btn btn-loc" onclick="selectLocation(\'' + loc + '\')">' + loc + '</button>';
-      });
-      html += '</div>';
+      html += '<div class="field-container">';
+      html += '<svg class="field-svg" viewBox="0 0 400 380" xmlns="http://www.w3.org/2000/svg">';
 
-      html += '<div class="section-title">Infield</div>';
-      html += '<div class="btn-grid grid-5">';
-      ['3B','SS','P','2B','1B'].forEach(function(loc) {
-        html += '<button class="btn btn-loc-infield" onclick="selectLocation(\'' + loc + '\')">' + loc + '</button>';
-      });
+      // Outfield grass background (full fan)
+      html += '<path d="M200,350 L10,120 A220,220 0 0,1 390,120 Z" fill="#2d5a1e" stroke="#1a3a10" stroke-width="1"/>';
+
+      // Outfield zones - 5 wedges
+      // LF
+      html += '<path class="field-zone" d="M200,350 L10,120 A220,220 0 0,1 86,62 L200,220 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1" onclick="selectLocation(\'LF\')"/>';
+      // LCF
+      html += '<path class="field-zone" d="M200,350 L86,62 A220,220 0 0,1 160,22 L200,220 Z" fill="#267a18" stroke="#3a8a2a" stroke-width="1" onclick="selectLocation(\'LCF\')"/>';
+      // CF
+      html += '<path class="field-zone" d="M200,350 L160,22 A220,220 0 0,1 240,22 L200,220 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1" onclick="selectLocation(\'CF\')"/>';
+      // RCF
+      html += '<path class="field-zone" d="M200,350 L240,22 A220,220 0 0,1 314,62 L200,220 Z" fill="#267a18" stroke="#3a8a2a" stroke-width="1" onclick="selectLocation(\'RCF\')"/>';
+      // RF
+      html += '<path class="field-zone" d="M200,350 L314,62 A220,220 0 0,1 390,120 L200,220 Z" fill="#2d6b1e" stroke="#3a8a2a" stroke-width="1" onclick="selectLocation(\'RF\')"/>';
+
+      // Infield dirt diamond
+      html += '<path d="M200,220 L130,280 L200,340 L270,280 Z" fill="#8B6914" stroke="#6b5010" stroke-width="1" opacity="0.3"/>';
+      html += '<path class="field-zone" d="M200,220 L130,280 L165,310 L200,280 Z" fill="#a07020" stroke="#7a5518" stroke-width="1" onclick="selectLocation(\'3B\')"/>';
+      html += '<path class="field-zone" d="M200,220 L130,280 L165,250 Z" fill="#8a6018" stroke="#7a5518" stroke-width="1" onclick="selectLocation(\'SS\')"/>';
+      html += '<path class="field-zone" d="M200,220 L165,250 L200,280 L235,250 Z" fill="#a07020" stroke="#7a5518" stroke-width="1" onclick="selectLocation(\'P\')"/>';
+      html += '<path class="field-zone" d="M200,220 L270,280 L235,250 Z" fill="#8a6018" stroke="#7a5518" stroke-width="1" onclick="selectLocation(\'2B\')"/>';
+      html += '<path class="field-zone" d="M200,220 L270,280 L235,310 L200,280 Z" fill="#a07020" stroke="#7a5518" stroke-width="1" onclick="selectLocation(\'1B\')"/>';
+
+      // Home plate
+      html += '<polygon points="200,345 195,340 195,335 205,335 205,340" fill="white" stroke="#ccc" stroke-width="0.5"/>';
+
+      // Base markers
+      html += '<rect x="127" y="277" width="6" height="6" fill="white" transform="rotate(45,130,280)" stroke="#ccc" stroke-width="0.5"/>';
+      html += '<rect x="197" y="217" width="6" height="6" fill="white" transform="rotate(45,200,220)" stroke="#ccc" stroke-width="0.5"/>';
+      html += '<rect x="267" y="277" width="6" height="6" fill="white" transform="rotate(45,270,280)" stroke="#ccc" stroke-width="0.5"/>';
+
+      // Foul lines
+      html += '<line x1="200" y1="350" x2="10" y2="120" stroke="white" stroke-width="1" opacity="0.4"/>';
+      html += '<line x1="200" y1="350" x2="390" y2="120" stroke="white" stroke-width="1" opacity="0.4"/>';
+
+      // Outfield zone labels
+      html += '<text class="field-zone-label" x="58" y="140" fill="white" font-size="16" text-anchor="middle">LF</text>';
+      html += '<text class="field-zone-label" x="120" y="85" fill="white" font-size="16" text-anchor="middle">LCF</text>';
+      html += '<text class="field-zone-label" x="200" y="65" fill="white" font-size="16" text-anchor="middle">CF</text>';
+      html += '<text class="field-zone-label" x="280" y="85" fill="white" font-size="16" text-anchor="middle">RCF</text>';
+      html += '<text class="field-zone-label" x="342" y="140" fill="white" font-size="16" text-anchor="middle">RF</text>';
+
+      // Infield position labels
+      html += '<text class="field-zone-label" x="150" y="300" fill="white" font-size="12" text-anchor="middle">3B</text>';
+      html += '<text class="field-zone-label" x="155" y="260" fill="white" font-size="12" text-anchor="middle">SS</text>';
+      html += '<text class="field-zone-label" x="200" y="265" fill="white" font-size="12" text-anchor="middle">P</text>';
+      html += '<text class="field-zone-label" x="245" y="260" fill="white" font-size="12" text-anchor="middle">2B</text>';
+      html += '<text class="field-zone-label" x="250" y="300" fill="white" font-size="12" text-anchor="middle">1B</text>';
+
+      // Outfield fence arc
+      html += '<path d="M10,120 A220,220 0 0,1 390,120" fill="none" stroke="#555" stroke-width="3"/>';
+
+      html += '</svg>';
       html += '</div>';
     }
 

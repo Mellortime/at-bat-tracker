@@ -207,6 +207,39 @@
     text-align: center;
   }
   .batter-input:focus { border-color: #CC0000; outline: none; }
+  .batter-go-btn {
+    background: #CC0000;
+    color: #FFD700;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .batter-go-btn:active { opacity: 0.7; }
+  .batter-active {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+  .batter-active-num {
+    font-size: 24px;
+    font-weight: 800;
+    color: #FFD700;
+  }
+  .batter-change-btn {
+    background: none;
+    border: 1px solid #666;
+    color: #888;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
 
   /* History */
   .history-box {
@@ -560,7 +593,37 @@ function showToast(msg) {
 }
 
 function setPitcher(val) { state.pitcher = val; }
-function setBatterNum(val) { state.batterNum = val.replace(/\D/g,'').slice(0,2); render(); }
+function setBatterNum(val) {
+  // Don't render on every keystroke — just store the value
+  state.pendingBatter = val.replace(/\D/g,'').slice(0,2);
+}
+
+function confirmBatter() {
+  var val = state.pendingBatter || '';
+  if (!val) {
+    var el = document.getElementById('batter-num-input');
+    if (el) val = el.value.replace(/\D/g,'').slice(0,2);
+  }
+  if (!val) { showToast('Enter a jersey number'); return; }
+  state.batterNum = val;
+  state.pendingBatter = '';
+  state.step = 'idle';
+  render();
+}
+
+function changeBatter() {
+  state.batterNum = '';
+  state.pendingBatter = '';
+  state.step = 'idle';
+  state.selectedContact = null;
+  state.selectedLocation = null;
+  state.hardHit = false;
+  render();
+  setTimeout(function() {
+    var el = document.getElementById('batter-num-input');
+    if (el) el.focus();
+  }, 50);
+}
 
 function startGame() {
   const oppInput = document.getElementById('opp-input');
@@ -591,11 +654,18 @@ function recordNonContact(type) {
     hardHit: false,
     timestamp: Date.now(),
   });
+  var msg = '#' + state.batterNum + ': ' + type + ' recorded';
   state.step = 'idle';
   state.selectedContact = null;
   state.selectedLocation = null;
   state.hardHit = false;
-  showToast('#' + state.batterNum + ': ' + type + ' recorded');
+  state.batterNum = '';
+  state.pendingBatter = '';
+  showToast(msg);
+  setTimeout(function() {
+    var el = document.getElementById('batter-num-input');
+    if (el) el.focus();
+  }, 50);
 }
 
 function selectContact(type) {
@@ -636,7 +706,13 @@ function recordHitOut(isHit) {
   state.selectedContact = null;
   state.selectedLocation = null;
   state.hardHit = false;
+  state.batterNum = '';
+  state.pendingBatter = '';
   showToast(msg);
+  setTimeout(function() {
+    var el = document.getElementById('batter-num-input');
+    if (el) el.focus();
+  }, 50);
 }
 
 function clearSelection() {
@@ -768,7 +844,13 @@ function render() {
   // Batter input
   html += '<div class="batter-section">';
   html += '<label>Batter #</label>';
-  html += '<input class="batter-input" type="tel" inputmode="numeric" placeholder="--" maxlength="2" value="' + esc(state.batterNum) + '" oninput="setBatterNum(this.value)" autocomplete="off">';
+  if (!state.batterNum) {
+    html += '<input id="batter-num-input" class="batter-input" type="tel" inputmode="numeric" placeholder="--" maxlength="2" oninput="setBatterNum(this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();confirmBatter();}" autocomplete="off">';
+    html += '<button class="batter-go-btn" onclick="confirmBatter()">Go</button>';
+  } else {
+    html += '<div class="batter-active"><span class="batter-active-num">#' + esc(state.batterNum) + '</span>';
+    html += '<button class="batter-change-btn" onclick="changeBatter()">Change</button></div>';
+  }
   html += '</div>';
 
   // Batter history
